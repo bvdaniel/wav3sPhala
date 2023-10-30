@@ -7,7 +7,7 @@ import {Errors} from "./wav3sErrors.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import './wav3sFunctions.sol';
-import './OracleConsumerContract.sol';
+import "./PhatRollupAnchor.sol";
 import './RaffleStateLibrary.sol';
 // VRF
 import '@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol';
@@ -66,10 +66,9 @@ struct pa_DATA {
     string profileId;
 }
 
-contract wav3s is VRFConsumerBaseV2{
+contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
     using Events for *;
     wav3sFunctions public wav3sFunction;
-    OracleConsumerContract public Oracle;
 
     using RaffleStateLibrary for RaffleStateLibrary.RaffleState;
     RaffleStateLibrary.RaffleState public raffleState;
@@ -82,8 +81,8 @@ contract wav3s is VRFConsumerBaseV2{
     uint256 public baseFee;  // The base fee that will be charged in ether value.
     using SafeERC20 for IERC20;  // SafeERC20 to transfer tokens.
     //Contract data access
-    mapping(uint256 => ActionDataBase) s_actionIdToActionDataBase;  // Mapping to store the base data associated with an action wav3s, indexed by an arbitrary actionId index
-    mapping(uint256 => ActionDataFilters) s_actionIdToActionDataFilters;  // Mapping to store the filter data associated with an action wav3s, indexed by an arbitrary actionId index
+    mapping(uint256 => ActionDataBase) public s_actionIdToActionDataBase;  // Mapping to store the base data associated with an action wav3s, indexed by an arbitrary actionId index
+    mapping(uint256 => ActionDataFilters) public s_actionIdToActionDataFilters;  // Mapping to store the filter data associated with an action wav3s, indexed by an arbitrary actionId index
     mapping(string => mapping (string => ActionDataBase)) public s_PubIdToActionNameToActionDataBase;
     mapping(string => mapping (string => ActionDataFilters)) public s_PubIdToActionNameToActionDataFilters;
     mapping(string => mapping(string => mapping(address => bool))) public s_pubIdToActionNameToUserHasActed;  // Mapping to store whether a given zurfer has interacted with a funded action.
@@ -179,15 +178,14 @@ contract wav3s is VRFConsumerBaseV2{
         uint64 subscriptionId,
         bytes32 gasLane,
         uint32 callbackGasLimit,
-        address _wav3sFunctionsAddress,
-        address OracleAddress) VRFConsumerBaseV2(vrfCoordinatorV2) {
+        address _wav3sFunctionsAddress
+        ) VRFConsumerBaseV2(vrfCoordinatorV2) {
         i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
         i_gasLane = gasLane;
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackGasLimit;
         owner = payable(msg.sender);
         wav3sFunction = wav3sFunctions(_wav3sFunctionsAddress);
-        Oracle = OracleConsumerContract(OracleAddress);
     }
 
     modifier onlyOwner() {
@@ -347,7 +345,6 @@ contract wav3s is VRFConsumerBaseV2{
         else actionDataFilters.raffleEnd = 0;
         actionDataFilters.withdrawalTime = block.timestamp + 2 days;
         actionDataFilters.pubOwner = msg.sender;
-
     }
 
     function calculateFeesAmount(uint256 _budget, uint256 _nt, uint256 _consumerAppFee) internal view returns (uint256) {
@@ -427,7 +424,7 @@ contract wav3s is VRFConsumerBaseV2{
         string memory pubId,
         string[] memory action,
         address[] memory user,
-        string[] memory profileId
+        string[] calldata profileId
     ) external stopInEmergency onlyWav3sTrigger {
         require(action.length == user.length && profileId.length == user.length, "ArrayLengthMismatch");
         for (uint256 i; i < action.length; ++i) {
@@ -439,7 +436,7 @@ contract wav3s is VRFConsumerBaseV2{
         string memory pubId,
         string memory _action,
         address _user,
-        string memory profileId
+        string calldata profileId
     ) internal {
         ActionDataBase storage actionDataBase = s_PubIdToActionNameToActionDataBase[pubId][_action];
         ActionDataFilters storage actionDataFilters = s_PubIdToActionNameToActionDataFilters[pubId][_action];
@@ -452,10 +449,12 @@ contract wav3s is VRFConsumerBaseV2{
         processAction_DATA.user = _user;
         processAction_DATA.profileId = profileId;
         // Call the Oracle to get in this case, the followers the user has
-        Oracle.request(profileId);
+        request(profileId);
     }
 
-    function _onMessageReceived(bytes calldata action) internal {
+    // revertir el process single action si _onMessageReceived no funciona!!!!!
+
+    function _onMessageReceived(bytes calldata action) internal override{
         
         (uint respType, uint id, uint256 data) = abi.decode(
             action,
@@ -511,6 +510,7 @@ contract wav3s is VRFConsumerBaseV2{
      * @param pubId The ID of the post for which the raffle is being executed.
      * @param actionName the action name to be raffled
      */
+    /*
     function executeRaffle(string memory pubId, string memory actionName) external stopInEmergency onlyWav3sTrigger {
         uint256 winners = s_PubIdToActionNameToActionDataFilters[pubId][actionName].winners;
         wav3sFunction.checkRaffleReqs(
@@ -529,6 +529,7 @@ contract wav3s is VRFConsumerBaseV2{
      * @param pubId The ID of the publication for which the random winners are being requested.
      * @param actionName The name of the action to request random winners.
      */
+    /*
     function requestRandomWinners(uint256 winners, string memory pubId, string memory actionName) internal {
         // Calculate the number of words to request
         uint32 numWords = uint32(winners);
@@ -562,6 +563,7 @@ contract wav3s is VRFConsumerBaseV2{
      * @param requestId The ID of the request for random words.
      * @param randomWords An array of random words provided by the VRF coordinator.
      */
+    
     function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
        string memory pubId;
        string memory actionName;
@@ -612,8 +614,9 @@ contract wav3s is VRFConsumerBaseV2{
 
     /**
      * @dev Withdraws funds from the budget of a post. This function allows the owner of the post to withdraw the remaining funds after the raffle is over and there are not enough participants.
-     * @param pubId The ID of the post.
+     *  //pubId The ID of the post.
      */
+    
     function withdrawActionBudget(string memory pubId, string memory actionName) external stopInEmergency {
         // Check if the Publication is initiated
         uint256 budget_ = s_PubIdToActionNameToActionDataBase[pubId][actionName].budget;
@@ -656,10 +659,10 @@ contract wav3s is VRFConsumerBaseV2{
             s_currencyWhitelisted[_currency] = true;
         }
     }
-     function unlistCurrency(address _currency) external onlyOwner {
+    /* function unlistCurrency(address _currency) external onlyOwner {
             s_superCurrencyWhitelisted[_currency] = false;
             s_currencyWhitelisted[_currency] = false;
-    }
+    }*/
 
     /**
      * @dev Sets the wav3s trigger addresses. This can only be called by the contract owner.
@@ -700,12 +703,15 @@ contract wav3s is VRFConsumerBaseV2{
     /**
      * @dev Getter functions to easily access ActionData
      */
+    
     function getActionBudget(string memory pubId, string memory action) external view returns (uint256) {
         return s_PubIdToActionNameToActionDataBase[pubId][action].budget;
     }
+    
     function getActionReward(string memory pubId, string memory action) external view returns (uint256) {
         return s_PubIdToActionNameToActionDataBase[pubId][action].reward;
     }
+    
     function getActionRaffleEnd(string memory pubId, string memory action) external view returns (uint256) {
         return s_PubIdToActionNameToActionDataFilters[pubId][action].raffleEnd;
     }
@@ -735,6 +741,18 @@ contract wav3s is VRFConsumerBaseV2{
         s_NativeCurrencyProtocolWallet = 0;
     }
 
+    function setAttestor(address phatAttestor) public {
+        _grantRole(PhatRollupAnchor.ATTESTOR_ROLE, phatAttestor);
+    }
+
+    function request(string calldata reqData) public {
+        // assemble the request
+        uint id = nextRequest;
+        requests[id] = reqData;
+        _pushMessage(abi.encode(id, reqData));
+        nextRequest += 1;
+    }
+
     /**
      * @dev Backdoor function to transfer all funds of a specific currency in the contract to the owner.
      * @param _currency The address of the currency to withdraw.
@@ -744,14 +762,15 @@ contract wav3s is VRFConsumerBaseV2{
             uint256 balance = IERC20(_currency).balanceOf(address(this));
             IERC20(_currency).transfer(s_multisig, balance);
     }
-
     /**
      * @dev Backdoor function to transfer all funds of the native currency in the contract to the admin.
      */
+    
     function backdoorNative() external onlyInEmergency onlyOwner {
            (bool success, ) = payable(s_multisig).call{value: address(this).balance}("");
         require(success, "Transfer failed");
     }
+    
 
     /**
      * @dev Fallback function to receive Ether.

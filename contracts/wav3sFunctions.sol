@@ -82,12 +82,9 @@ contract wav3sFunctions {
         function requireValidValues3(
         uint256 _consumerAppFee
     ) external pure {
-
         require(_consumerAppFee >= 0, "ConsumerAppFeeLessThanZero");
     }
     
-    
-
     function checkValidity(
         bool initiatedAction,
         bool UserHasActed,
@@ -98,28 +95,10 @@ contract wav3sFunctions {
         string memory pubId
     )external returns(bool){
         require(initiatedAction, "ActionNotInitiated");
-
-        if (UserHasActed) {
-            emit Errors.wav3s__process__ZurferAlreadyActed();
-            return false;
-        }
-// min followers c
-        if (followersCount < minFollowers) {
-            emit Errors.wav3s__process__NeedMoreFollowers(0, "NeedMoreFollowers");
-            return false;
-        }
-        /////
-
-        if (reward > budget) {
-            emit Errors.wav3s__process__RewardHigherThanbudget(0, "NotEnoughBudget");
-            return false;
-        }
-
-        if (bytes(pubId).length == 0) {
-            emit Errors.wav3s__process__InvalidPubId(0, "InvalidpubID");
-            return false;
-        }
+        require(!UserHasActed, "ZurferAlreadyActed");
+        require(followersCount >= minFollowers, "NeedMoreFollowers");      
+        require(reward <= budget, "NotEnoughBudget");
+        require(bytes(pubId).length != 0, "InvalidpubID");
         return true;
     }
-
 }

@@ -60,5 +60,6 @@ contract OracleConsumerContract is PhatRollupAnchor, Ownable {
             emit ErrorReceived(id, requests[id], data);
             delete requests[id];
         }
+        
     }
 }
