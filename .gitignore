@@ -12,7 +12,6 @@ typechain
 
 # don't push the environment vars!
 .env
-deploy.sh
 
 # Built application files
 .DS*
