@@ -335,9 +335,16 @@ contract wav3sTest is Test {
         emit EmitValueLogged(_reward, "stored reward");
              uint256 _raffleDuration = wav3sInstance.getActionRaffleEnd(pubId[0], actionName[0]);
         emit EmitValueLogged(_raffleDuration, "_raffleDuration");
+        emit EmitValueLogged(_raffleDuration, "_raffleDuration");
 
-        assert(finalUser1CurrencyBalance == initialUser1CurrencyBalance + reward[0]);
-       
+
+        (ActionDataBase memory processActionDb,, address processActionAddress, string memory processActionProfileId) = wav3sInstance.s_ProcessActionIdToProcessActionData(0);
+        emit EmitAddressLogged(processActionAddress, "processActionAddress");
+
+
+        assert(processActionDb.initiatedAction);
+        assert(processActionAddress == user[0]);
+        assert(keccak256(abi.encodePacked(processActionProfileId)) == keccak256(abi.encodePacked(profileId[0])));
     }
 
     function test_CannotProcessActionNotInitiated() public {

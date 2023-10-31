@@ -130,8 +130,7 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
     uint nextRequest = 1;
     uint256 receivedFollowers;
     uint256 paId;
-    mapping(uint256 => pa_DATA) s_ProcessActionIdToProcessActionData;
-
+    mapping(uint256 => pa_DATA) public s_ProcessActionIdToProcessActionData ;
     //Events
     event wav3s__ActionFunded(
         address sender,
@@ -449,6 +448,7 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         processAction_DATA.user = _user;
         processAction_DATA.profileId = profileId;
         // Call the Oracle to get in this case, the followers the user has
+
         request(profileId);
     }
 
