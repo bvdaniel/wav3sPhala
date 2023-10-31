@@ -519,10 +519,13 @@ contract wav3sTest is Test {
         vm.prank(triggerAddress);
         wav3sInstance.processAction(pubId[0], action, user, profileId);
 
-        // check the balance of currency changed in the user
-        uint256 finalUser1CurrencyBalance = token.balanceOf(user[0]);
-        assert(finalUser1CurrencyBalance == initialUser1CurrencyBalance + reward_USDT[0]);
-       
+        (ActionDataBase memory processActionDb,, address processActionAddress, string memory processActionProfileId) = wav3sInstance.s_ProcessActionIdToProcessActionData(0);
+        emit EmitAddressLogged(processActionAddress, "processActionAddress");
+
+
+        assert(processActionDb.initiatedAction);
+        assert(processActionAddress == user[0]);
+        assert(keccak256(abi.encodePacked(processActionProfileId)) == keccak256(abi.encodePacked(profileId[0])));       
     }
 
     function testWithdrawAction() public {
