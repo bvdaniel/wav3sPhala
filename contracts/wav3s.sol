@@ -455,7 +455,6 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
     // revertir el process single action si _onMessageReceived no funciona!!!!!
 
     function _onMessageReceived(bytes calldata action) internal override{
-        
         (uint respType, uint id, uint256 data) = abi.decode(
             action,
             (uint, uint, uint256)
@@ -494,12 +493,14 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         if (actionDataFilters.raffleEnd == 0) {
             // Transfer funds from the budget owner to the zurfer
             IERC20(actionDataBase.currency).transfer(processAction_DATA.user, actionDataBase.reward);
+            
+            // Update the budget
+            actionDataBase.budget -= actionDataBase.reward;
+
             // Check if the budget is fully consumed
             if (actionDataBase.budget == 0) {
                 emit Events.wav3s__ActionFinished(actionDataBase.pubId, actionDataBase.actionName);
             }
-            // Update the budget
-            actionDataBase.budget -= actionDataBase.reward;
         }
         emit Events.wav3s__ActionProcessed(processAction_DATA.user, actionDataBase.pubId, actionDataBase.actionName);
         paId++;

@@ -281,6 +281,7 @@ contract wav3sTest is Test {
         assert(wav3sCurrencyBalance == wav3sCurrencyBalanceAfter + expectedWav3sCurrencyFees);
     
     }
+
     function testWithdrawAppFeesFromWalletFunding() public {
         IERC20 token = IERC20(currency);
         testWithdrawFeesFromWalletFunding();     
@@ -301,6 +302,7 @@ contract wav3sTest is Test {
         assert(inititalAppBalance + consumerAppFees == finalAppBalance);
         assert(inititalWav3sBalance == finalWav3sBalance + consumerAppFees );
     }
+
     function testProcessAction() public {
         testSetPubId();
 
@@ -345,6 +347,22 @@ contract wav3sTest is Test {
         assert(processActionDb.initiatedAction);
         assert(processActionAddress == user[0]);
         assert(keccak256(abi.encodePacked(processActionProfileId)) == keccak256(abi.encodePacked(profileId[0])));
+    }
+
+    function testOnMessageReceive() public {
+        testProcessAction();
+
+        uint id = 10;
+        uint phalaRequest = "testRequest";
+        uint256 numberOfFollowers = 10;
+                
+        vm.expectEmit();
+        emit wav3sInstance.ResponseReceived(id, phalaRequest, numberOfFollowers);
+
+        uint respType = 0;
+        bytes calldata action = abi.encodePacked(respType, id, numberOfFollowers);
+        
+        wav3sInstance._onMessageReceived(action);   
     }
 
     function test_CannotProcessActionNotInitiated() public {
