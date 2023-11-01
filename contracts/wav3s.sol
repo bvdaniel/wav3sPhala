@@ -455,7 +455,11 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
     // revertir el process single action si _onMessageReceived no funciona!!!!!
 
     function _onMessageReceived(bytes calldata action) internal override{
-        (uint respType, uint id, uint256 data) = abi.decode(
+        processOnMessageReceived(action);
+    }
+
+    function processOnMessageReceived(bytes calldata action) public {
+           (uint respType, uint id, uint256 data) = abi.decode(
             action,
             (uint, uint, uint256)
         );
@@ -505,6 +509,7 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         emit Events.wav3s__ActionProcessed(processAction_DATA.user, actionDataBase.pubId, actionDataBase.actionName);
         paId++;
     }
+
 
     /**
      * @dev Executes the raffle for a specific action id. This function verifies the conditions for executing the raffle, including the raffle state, the raffle time, the achievement of the goal, and the availability of enough reMirrorers. If all conditions are met, it requests random winners for the raffle.

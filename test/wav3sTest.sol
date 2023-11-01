@@ -76,6 +76,7 @@ contract wav3sTest is Test {
     event EmitAddressLogged(address value, string message);
     event EmitStringLogged(string value, string message);
     event ErrorLogged(string message, uint256 additionalInfo);
+    event ResponseReceived(uint id, uint phalaRequest, uint256 numberOfFollowers);
 
 
     function setUp() public {      
@@ -352,17 +353,22 @@ contract wav3sTest is Test {
     function testOnMessageReceive() public {
         testProcessAction();
 
-        uint id = 10;
-        uint phalaRequest = "testRequest";
-        uint256 numberOfFollowers = 10;
-                
-        vm.expectEmit();
-        emit wav3sInstance.ResponseReceived(id, phalaRequest, numberOfFollowers);
+        IERC20 token = IERC20(currency);       
+        uint256 inititalUserBalance = token.balanceOf(address(bigWhale2));
+        uint256 inititalWav3sBalance = token.balanceOf(address(wav3sInstance));        
+
 
         uint respType = 0;
-        bytes calldata action = abi.encodePacked(respType, id, numberOfFollowers);
-        
-        wav3sInstance._onMessageReceived(action);   
+        uint id = 10;
+        uint256 numberOfFollowers = 10;
+        uint phalaRequest = 0;
+
+        bytes memory action = abi.encodePacked(respType, id, numberOfFollowers);
+
+        wav3sInstance.processOnMessageReceived(action);   
+        uint256 finalWav3sBalance = token.balanceOf(address(wav3sInstance));
+
+        assert(finalWav3sBalance == inititalWav3sBalance - reward[0]);
     }
 
     function test_CannotProcessActionNotInitiated() public {
