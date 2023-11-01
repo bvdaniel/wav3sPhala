@@ -44,6 +44,8 @@ contract wav3sTest is Test {
     uint256[] budget_USDT = [1500000*110/100,2000000*110/100,3000000*110/100]; // 1.5 - 2 - 3
     uint256 totalBudgets_USDT = budget_USDT[0] + budget_USDT[1] + budget_USDT[2];
     uint256[] reward_USDT = [100000,1000000,200000]; // 0.1 - 1 - 0.2
+    string[3] pubId = ["s8a7hx-4f5-g","2ddv-4fyg-fb9","ghh-32dd-0xef"];
+    string[3] actionName = ["collect","like","mirror"];
 
 
     address bigWhale = 0xe7804c37c13166fF0b37F5aE0BB07A3aEbb6e245;
@@ -178,8 +180,7 @@ contract wav3sTest is Test {
     function testSetPubId() public {
         // 
         testfundAction();
-        string[3] memory pubId = ["s8a7hx-4f5-g","2ddv-4fyg-fb9","ghh-32dd-0xef"];
-        string[3] memory actionName = ["collect","like","mirror"];
+        
         for (uint256 i; i < pubId.length; ++i) {
             vm.prank(triggerAddress);
             wav3sInstance.setPubId(i,pubId[i], actionName[i]);
@@ -356,7 +357,8 @@ contract wav3sTest is Test {
         IERC20 token = IERC20(currency);       
         uint256 inititalUserBalance = token.balanceOf(address(bigWhale2));
         uint256 inititalWav3sBalance = token.balanceOf(address(wav3sInstance));        
-
+        
+        (,,, uint256 initialPublicationBudget,,,) = wav3sInstance.s_PubIdToActionNameToActionDataBase(pubId[0], actionName[0]);
 
         uint respType = 0;
         uint id = 10;
@@ -366,9 +368,17 @@ contract wav3sTest is Test {
         bytes memory action = abi.encodePacked(respType, id, numberOfFollowers);
 
         wav3sInstance.processOnMessageReceived(action);   
+        
         uint256 finalWav3sBalance = token.balanceOf(address(wav3sInstance));
 
+
+           
+
+        (,,, uint256 finalPublicationBudget,,,) = wav3sInstance.s_PubIdToActionNameToActionDataBase(pubId[0], actionName[0]);
+
+
         assert(finalWav3sBalance == inititalWav3sBalance - reward[0]);
+        assert(finalPublicationBudget == initialPublicationBudget - reward[0]);
     }
 
     function test_CannotProcessActionNotInitiated() public {
