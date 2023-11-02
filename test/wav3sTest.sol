@@ -370,15 +370,35 @@ contract wav3sTest is Test {
         wav3sInstance.processOnMessageReceived(action);   
         
         uint256 finalWav3sBalance = token.balanceOf(address(wav3sInstance));
-
-
-           
-
         (,,, uint256 finalPublicationBudget,,,) = wav3sInstance.s_PubIdToActionNameToActionDataBase(pubId[0], actionName[0]);
-
 
         assert(finalWav3sBalance == inititalWav3sBalance - reward[0]);
         assert(finalPublicationBudget == initialPublicationBudget - reward[0]);
+    }
+
+     function testOnMessageReceiveUSDT() public {
+        testProcessActionUSDT();
+
+        IERC20 token = IERC20(USDTCurrency);       
+        uint256 inititalUserBalance = token.balanceOf(address(bigWhale2));
+        uint256 inititalWav3sBalance = token.balanceOf(address(wav3sInstance));        
+        
+        (,,, uint256 initialPublicationBudget,,,) = wav3sInstance.s_PubIdToActionNameToActionDataBase(pubId[0], actionName[0]);
+
+        uint respType = 0;
+        uint id = 10;
+        uint256 numberOfFollowers = 10;
+        uint phalaRequest = 0;
+
+        bytes memory action = abi.encodePacked(respType, id, numberOfFollowers);
+
+        wav3sInstance.processOnMessageReceived(action);   
+        
+        uint256 finalWav3sBalance = token.balanceOf(address(wav3sInstance));
+        (,,, uint256 finalPublicationBudget,,,) = wav3sInstance.s_PubIdToActionNameToActionDataBase(pubId[0], actionName[0]);
+
+        assert(finalWav3sBalance == inititalWav3sBalance - reward_USDT[0]);
+        assert(finalPublicationBudget == initialPublicationBudget - reward_USDT[0]);
     }
 
     function test_CannotProcessActionNotInitiated() public {
@@ -399,8 +419,17 @@ contract wav3sTest is Test {
         profileId[0] = "0x01";
          // Now you can call processAction with arrays
         vm.prank(triggerAddress);
-        vm.expectRevert("ActionNotInitiated");
         wav3sInstance.processAction(pubId[1], action, user, profileId);
+        
+        vm.expectRevert("ActionNotInitiated");
+
+        
+        uint respType = 2;
+        uint id = 10;
+        uint256 numberOfFollowers = 10;
+
+        bytes memory actionBuffer = abi.encodePacked(respType, id, numberOfFollowers);
+        wav3sInstance.processOnMessageReceived(actionBuffer);   
     }
 
     function test_whitelistSupercurrency() public {
@@ -563,7 +592,8 @@ contract wav3sTest is Test {
     }
 
     function testWithdrawAction() public {
-        testProcessActionUSDT();
+        testOnMessageReceiveUSDT();
+
         string[3] memory pubId = ["s8a7hx-4f5-g","2ddv-4fyg-fb9","ghh-32dd-0xef"];
         string[3] memory actionName = ["collect","like","mirror"];
         // check balance action budget before
