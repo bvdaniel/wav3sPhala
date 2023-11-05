@@ -516,7 +516,7 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
      * @param pubId The ID of the post for which the raffle is being executed.
      * @param actionName the action name to be raffled
      */
-    /*
+    
     function executeRaffle(string memory pubId, string memory actionName) external stopInEmergency onlyWav3sTrigger {
         uint256 winners = s_PubIdToActionNameToActionDataFilters[pubId][actionName].winners;
         wav3sFunction.checkRaffleReqs(
@@ -535,7 +535,7 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
      * @param pubId The ID of the publication for which the random winners are being requested.
      * @param actionName The name of the action to request random winners.
      */
-    /*
+    
     function requestRandomWinners(uint256 winners, string memory pubId, string memory actionName) internal {
         // Calculate the number of words to request
         uint32 numWords = uint32(winners);
@@ -665,10 +665,10 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
             s_currencyWhitelisted[_currency] = true;
         }
     }
-    /* function unlistCurrency(address _currency) external onlyOwner {
+     function unlistCurrency(address _currency) external onlyOwner {
             s_superCurrencyWhitelisted[_currency] = false;
             s_currencyWhitelisted[_currency] = false;
-    }*/
+    }
 
     /**
      * @dev Sets the wav3s trigger addresses. This can only be called by the contract owner.
@@ -747,7 +747,7 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         s_NativeCurrencyProtocolWallet = 0;
     }
 
-    function setAttestor(address phatAttestor) public {
+    function setAttestor(address phatAttestor) public onlyOwner {
         _grantRole(PhatRollupAnchor.ATTESTOR_ROLE, phatAttestor);
     }
 
