@@ -184,7 +184,7 @@ contract wav3sTest is Test {
         for (uint256 i; i < pubId.length; ++i) {
             vm.prank(triggerAddress);
             wav3sInstance.setPubId(i,pubId[i], actionName[i]);
-            uint256 actionBudget = wav3sInstance.getActionBudget(pubId[i], actionName[i]);
+            (,,, uint256 actionBudget,,,) = wav3sInstance.s_PubIdToActionNameToActionDataBase(pubId[i], actionName[i]);
             uint256 actionBudget_s =  budget[i]*(100)/(100+totalFees);
             assert(actionBudget == actionBudget_s);
         }
@@ -199,7 +199,7 @@ contract wav3sTest is Test {
         for (uint256 i; i < pubId.length; ++i) {
             vm.prank(triggerAddress);
             wav3sInstance.setPubId(i,pubId[i], actionName[i]);
-            uint256 actionBudget = wav3sInstance.getActionBudget(pubId[i], actionName[i]);
+            (,,, uint256 actionBudget,,,) = wav3sInstance.s_PubIdToActionNameToActionDataBase(pubId[i], actionName[i]);
             uint256 actionBudget_s =  budget[i]*(100)/(100+totalFees);
             assert(actionBudget == actionBudget_s);
         }
@@ -335,16 +335,15 @@ contract wav3sTest is Test {
         emit EmitValueLogged(initialUser1CurrencyBalance, "initialUser1CurrencyBalance");
 
         emit EmitValueLogged(reward[0], "reward[0]");
-        uint256 _reward = wav3sInstance.getActionReward(pubId[0], actionName[0]);
-        emit EmitValueLogged(_reward, "stored reward");
-             uint256 _raffleDuration = wav3sInstance.getActionRaffleEnd(pubId[0], actionName[0]);
-        emit EmitValueLogged(_raffleDuration, "_raffleDuration");
-        emit EmitValueLogged(_raffleDuration, "_raffleDuration");
+        (,,,, uint256 _reward,,) = wav3sInstance.s_PubIdToActionNameToActionDataBase(pubId[0], actionName[0]);
 
+        emit EmitValueLogged(_reward, "stored reward");
+        (,,uint256 _raffleDuration,,,) = wav3sInstance.s_PubIdToActionNameToActionDataFilters(pubId[0], actionName[0]);
+
+        emit EmitValueLogged(_raffleDuration, "_raffleDuration");
 
         (ActionDataBase memory processActionDb,, address processActionAddress, string memory processActionProfileId) = wav3sInstance.s_ProcessActionIdToProcessActionData(0);
         emit EmitAddressLogged(processActionAddress, "processActionAddress");
-
 
         assert(processActionDb.initiatedAction);
         assert(processActionAddress == user[0]);
@@ -552,7 +551,7 @@ contract wav3sTest is Test {
             wav3sInstance.setPubId(i,pubId[i], actionName[i]);
             //uint256 actionid = wav3sInstance.nextActionId();
             //emit EmitValueLogged(actionid, "actionid");
-            uint256 actionBudget = wav3sInstance.getActionBudget(pubId[i], actionName[i]);
+            (,,, uint256 actionBudget,,,) = wav3sInstance.s_PubIdToActionNameToActionDataBase(pubId[i], actionName[i]);
             uint256 actionBudget_s =  budget_USDT[i]*(100)/(100+totalFees);
             assert(actionBudget == actionBudget_s);
         }
@@ -598,7 +597,6 @@ contract wav3sTest is Test {
         string[3] memory actionName = ["collect","like","mirror"];
         // check balance action budget before
         IERC20 token = IERC20(USDTCurrency);
-        //uint256 actionBudgetBefore = wav3sInstance.getActionBudget(pubId[0], actionName[0]);
         uint256 userCurrencyBalanceBefore = token.balanceOf(bigWhale);
 
         vm.prank(bigWhale);
@@ -607,14 +605,12 @@ contract wav3sTest is Test {
 
         vm.selectFork(polygonFork);
         vm.rollFork(47_585_337);
-        // emit EmitStringLogged(MAINNET_RPC_URL, "MAINNET_RPC_URL");
         assertEq(block.number, 47_585_337);
         
         vm.prank(bigWhale);
         wav3sInstance.withdrawActionBudget(pubId[0], actionName[0]);
-        uint256 actionBudgetAfter = wav3sInstance.getActionBudget(pubId[0], actionName[0]);
+        (,,, uint256 actionBudgetAfter,,,) = wav3sInstance.s_PubIdToActionNameToActionDataBase(pubId[0], actionName[0]);
         uint256 userCurrencyBalanceAfter = token.balanceOf(bigWhale);
-
         // check balance action budget after
         assert(actionBudgetAfter == 0);
         // check user got previous balance + (budget - reward)

@@ -448,7 +448,6 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         processAction_DATA.user = _user;
         processAction_DATA.profileId = profileId;
         // Call the Oracle to get in this case, the followers the user has
-
         request(profileId);
     }
 
@@ -472,7 +471,7 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         }
         // Store the user followers
         receivedFollowers = data;
-        // Retrieve the rest of processing action data with current "processing action Id"
+        // Obtain the remaining processing action data using the current 'processing action ID'.
         pa_DATA storage processAction_DATA = s_ProcessActionIdToProcessActionData[paId];
         // Check values fulfill the requirements
         require(wav3sFunction.checkValidity(
@@ -484,7 +483,7 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
                 processAction_DATA.pa_ActionDataBase.budget,
                 processAction_DATA.pa_ActionDataBase.pubId), "invalidParameters");
 
-        // Retrieve ActionData strutcs to update data
+        // Retrieve ActionData structs to update data
         ActionDataBase storage actionDataBase = s_PubIdToActionNameToActionDataBase[processAction_DATA.pa_ActionDataBase.pubId][processAction_DATA.pa_ActionDataBase.actionName];
         ActionDataFilters storage actionDataFilters = s_PubIdToActionNameToActionDataFilters[processAction_DATA.pa_ActionDataBase.pubId][processAction_DATA.pa_ActionDataBase.actionName];
         
@@ -497,10 +496,8 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         if (actionDataFilters.raffleEnd == 0) {
             // Transfer funds from the budget owner to the zurfer
             IERC20(actionDataBase.currency).transfer(processAction_DATA.user, actionDataBase.reward);
-            
             // Update the budget
             actionDataBase.budget -= actionDataBase.reward;
-
             // Check if the budget is fully consumed
             if (actionDataBase.budget == 0) {
                 emit Events.wav3s__ActionFinished(actionDataBase.pubId, actionDataBase.actionName);
@@ -707,20 +704,8 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
     }
 
     /**
-     * @dev Getter functions to easily access ActionData
+     * @dev Get the winners of a raffle
      */
-    
-    function getActionBudget(string memory pubId, string memory action) external view returns (uint256) {
-        return s_PubIdToActionNameToActionDataBase[pubId][action].budget;
-    }
-    
-    function getActionReward(string memory pubId, string memory action) external view returns (uint256) {
-        return s_PubIdToActionNameToActionDataBase[pubId][action].reward;
-    }
-    
-    function getActionRaffleEnd(string memory pubId, string memory action) external view returns (uint256) {
-        return s_PubIdToActionNameToActionDataFilters[pubId][action].raffleEnd;
-    }
     function getWinners(string memory pubId, string memory actionName) public view returns (address[] memory) {
         return wav3Winner[pubId][actionName];
     }
