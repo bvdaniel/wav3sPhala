@@ -381,14 +381,17 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         ActionDataBase storage actionDataBase = s_actionIdToActionDataBase[actionId];
         require(!actionDataBase.pubIdSet, "ActionAlreadyFunded/Set");
         require(actionId < nextActionId, "ActionNotYetEmitted");
-        ActionDataBase storage pubActionDataBase = s_PubIdToActionNameToActionDataBase[pubId][actionName];
-        pubActionDataBase.currency = actionDataBase.currency;
-        pubActionDataBase.actionName = actionName;
-        pubActionDataBase.pubId = pubId;
-        pubActionDataBase.pubIdSet = true;
-        pubActionDataBase.budget = actionDataBase.budget;
-        pubActionDataBase.reward = actionDataBase.reward;
-        pubActionDataBase.initiatedAction = true;
+       // ActionDataBase storage pubActionDataBase = s_PubIdToActionNameToActionDataBase[pubId][actionName];
+
+         s_PubIdToActionNameToActionDataBase[pubId][actionName] = ActionDataBase({
+            currency: actionDataBase.currency,
+            actionName: actionName,
+            pubId: pubId,
+            pubIdSet: true,
+            budget: actionDataBase.budget,
+            reward: actionDataBase.reward,
+            initiatedAction: true 
+        });
         setPubIdFilters(actionId, pubId, actionName);
     }
 
@@ -401,14 +404,20 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
     function setPubIdFilters(uint256 actionId, string memory pubId, string memory actionName) internal  {
         ActionDataFilters storage actionDataFilters = s_actionIdToActionDataFilters[actionId];
         ActionDataBase storage actionDataBase = s_actionIdToActionDataBase[actionId];
-        ActionDataFilters storage pubActionDataFilters = s_PubIdToActionNameToActionDataFilters[pubId][actionName];
-        pubActionDataFilters.pubOwner = actionDataFilters.pubOwner;
-        pubActionDataFilters.variable = actionDataFilters.variable;
-        pubActionDataFilters.raffleEnd = actionDataFilters.raffleEnd;
-        pubActionDataFilters.withdrawalTime = actionDataFilters.withdrawalTime;
-        if (pubActionDataFilters.raffleEnd > 0) {
+        //ActionDataFilters storage pubActionDataFilters = s_PubIdToActionNameToActionDataFilters[pubId][actionName];
+        s_PubIdToActionNameToActionDataFilters[pubId][actionName]= ActionDataFilters({
+            zurfersCount: 0,
+            zurfers: new address[](0),
+            pubOwner: actionDataFilters.pubOwner,
+            variable: actionDataFilters.variable,
+            raffleEnd: actionDataFilters.raffleEnd,
+            withdrawalTime: actionDataFilters.withdrawalTime,
+            winners: 0
+        });
+
+        if (actionDataFilters.raffleEnd > 0) {
             s_pubIdToActionNameToRaffleState[pubId][actionName] = RaffleStateLibrary.RaffleState.OPEN;
-            pubActionDataFilters.winners = actionDataBase.budget / actionDataBase.reward;
+            s_PubIdToActionNameToActionDataFilters[pubId][actionName].winners= actionDataBase.budget / actionDataBase.reward;
         }
     }
 
@@ -442,11 +451,12 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         // Store actionDataBase, actionDataFilters, user and profileId in a struct for this action processing.
         // This way, after the oracle response arrives, is can be accessed for checking the requirements
         // Map this action processing to a "process action Id"
-        pa_DATA storage processAction_DATA = s_ProcessActionIdToProcessActionData[paId];
-        processAction_DATA.pa_ActionDataBase = actionDataBase;
-        processAction_DATA.pa_ActionDataFilters = actionDataFilters;
-        processAction_DATA.user = _user;
-        processAction_DATA.profileId = profileId;
+        s_ProcessActionIdToProcessActionData[paId]= pa_DATA({
+            pa_ActionDataBase: actionDataBase,
+            pa_ActionDataFilters: actionDataFilters,
+            user: _user,
+            profileId: profileId
+        });
         // Call the Oracle to get in this case, the followers the user has
         request(profileId);
     }
@@ -486,7 +496,6 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         // Retrieve ActionData structs to update data
         ActionDataBase storage actionDataBase = s_PubIdToActionNameToActionDataBase[processAction_DATA.pa_ActionDataBase.pubId][processAction_DATA.pa_ActionDataBase.actionName];
         ActionDataFilters storage actionDataFilters = s_PubIdToActionNameToActionDataFilters[processAction_DATA.pa_ActionDataBase.pubId][processAction_DATA.pa_ActionDataBase.actionName];
-        
         // Set the flag indicating that the user has acted with this action
         s_pubIdToActionNameToUserHasActed[actionDataBase.pubId][actionDataBase.actionName][processAction_DATA.user] = true;
         // Count the number of valid zurfers of this publication
@@ -515,15 +524,16 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
      */
     
     function executeRaffle(string memory pubId, string memory actionName) external stopInEmergency onlyWav3sTrigger {
-        uint256 winners = s_PubIdToActionNameToActionDataFilters[pubId][actionName].winners;
+        ActionDataFilters storage actionDataFilters = s_PubIdToActionNameToActionDataFilters[pubId][actionName];
+
         wav3sFunction.checkRaffleReqs(
         s_pubIdToActionNameToRaffleState[pubId][actionName],
-        s_PubIdToActionNameToActionDataFilters[pubId][actionName].raffleEnd,
-        s_PubIdToActionNameToActionDataFilters[pubId][actionName].zurfersCount,
-        winners
+        actionDataFilters.raffleEnd,
+        actionDataFilters.zurfersCount,
+        actionDataFilters.winners
         );
         // Request random winners for the raffle
-        requestRandomWinners(winners, pubId, actionName);   
+        requestRandomWinners(actionDataFilters.winners, pubId, actionName);   
     }
 
     /**
@@ -622,23 +632,24 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
     
     function withdrawActionBudget(string memory pubId, string memory actionName) external stopInEmergency {
         // Check if the Publication is initiated
-        uint256 budget_ = s_PubIdToActionNameToActionDataBase[pubId][actionName].budget;
-        address currency_ = s_PubIdToActionNameToActionDataBase[pubId][actionName].currency;
+        ActionDataBase storage actionDataBase = s_PubIdToActionNameToActionDataBase[pubId][actionName];
+        ActionDataFilters storage actionDataFilters = s_PubIdToActionNameToActionDataFilters[pubId][actionName];
+
         wav3sFunction.checkWithdrawalReqs(
-        s_PubIdToActionNameToActionDataBase[pubId][actionName].initiatedAction,
+        actionDataBase.initiatedAction,
         msg.sender,
-        s_PubIdToActionNameToActionDataFilters[pubId][actionName].pubOwner,
-        s_PubIdToActionNameToActionDataFilters[pubId][actionName].raffleEnd,
-        s_PubIdToActionNameToActionDataFilters[pubId][actionName].withdrawalTime,
-        budget_,
-        s_PubIdToActionNameToActionDataFilters[pubId][actionName].zurfersCount,
-        s_PubIdToActionNameToActionDataFilters[pubId][actionName].winners
+        actionDataFilters.pubOwner,
+        actionDataFilters.raffleEnd,
+        actionDataFilters.withdrawalTime,
+        actionDataBase.budget,
+        actionDataFilters.zurfersCount,
+        actionDataFilters.winners
        );
         // Transfer the remaining budget to the owner
-        IERC20(currency_).transfer(msg.sender, budget_);
-        s_PubIdToActionNameToActionDataBase[pubId][actionName].budget = 0;
+        IERC20(actionDataBase.currency).transfer(msg.sender, actionDataBase.budget);
+        actionDataBase.budget = 0;
         s_pubIdToActionNameToRaffleState[pubId][actionName] = RaffleStateLibrary.RaffleState.CLOSED;
-        emit Events.wav3s__ActionWithdrawn(budget_, pubId,actionName, msg.sender);
+        emit Events.wav3s__ActionWithdrawn(actionDataBase.budget, pubId,actionName, msg.sender);
     }
 
     function withdrawInternalWalletBudget(uint256 etherAmount, uint256 currencyAmount, address _currency) public payable stopInEmergency {
