@@ -6,6 +6,7 @@ import {Events} from "./wav3sEvents.sol";
 import {Errors} from "./wav3sErrors.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import './wav3sFunctions.sol';
 import "./PhatRollupAnchor.sol";
 import './RaffleStateLibrary.sol';
@@ -66,7 +67,7 @@ struct pa_DATA {
     string profileId;
 }
 
-contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
+contract wav3s is ReentrancyGuard, VRFConsumerBaseV2, PhatRollupAnchor {
     using Events for *;
     wav3sFunctions public wav3sFunction;
 
@@ -421,6 +422,10 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         }
     }
 
+    function setAttestor(address phatAttestor) public onlyOwner {
+        _grantRole(PhatRollupAnchor.ATTESTOR_ROLE, phatAttestor);
+    }
+
     /**
      * @dev Processes an action. This will transfer funds to the owner of the profile that performed the action.
      * @param pubId The ID of the post that was mirrored.
@@ -461,7 +466,13 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         request(profileId);
     }
 
-    // revertir el process single action si _onMessageReceived no funciona!!!!!
+    function request(string calldata reqData) public {
+        // assemble the request
+        uint id = nextRequest;
+        requests[id] = reqData;
+        _pushMessage(abi.encode(id, reqData));
+        nextRequest += 1;
+    }
 
     function _onMessageReceived(bytes calldata action) internal override{
         processOnMessageReceived(action);
@@ -630,7 +641,7 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
      *  //pubId The ID of the post.
      */
     
-    function withdrawActionBudget(string memory pubId, string memory actionName) external stopInEmergency {
+    function withdrawActionBudget(string memory pubId, string memory actionName) external stopInEmergency nonReentrant {
         // Check if the Publication is initiated
         ActionDataBase storage actionDataBase = s_PubIdToActionNameToActionDataBase[pubId][actionName];
         ActionDataFilters storage actionDataFilters = s_PubIdToActionNameToActionDataFilters[pubId][actionName];
@@ -652,7 +663,7 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         emit Events.wav3s__ActionWithdrawn(actionDataBase.budget, pubId,actionName, msg.sender);
     }
 
-    function withdrawInternalWalletBudget(uint256 etherAmount, uint256 currencyAmount, address _currency) public payable stopInEmergency {
+    function withdrawInternalWalletBudget(uint256 etherAmount, uint256 currencyAmount, address _currency) public payable stopInEmergency nonReentrant {
         require(s_userToCurrencyToWalletBudget[msg.sender][_currency] >= currencyAmount,"NotEnoughCurrency");
         require(s_userToNativeCurrencyWalletBudget[msg.sender] >= etherAmount,"NotEnoughEther");
         payable(msg.sender).transfer(etherAmount);
@@ -727,7 +738,7 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         stopped = !stopped;
     }
 
-    function withdrawAppFees(address _currency) public {
+    function withdrawAppFees(address _currency) public nonReentrant{
         IERC20(_currency).transfer(msg.sender, s_appToCurrencyToWallet[msg.sender][_currency]);
         s_appToCurrencyToWallet[msg.sender][_currency] = 0;
     }
@@ -741,18 +752,6 @@ contract wav3s is VRFConsumerBaseV2, PhatRollupAnchor {
         (bool success, ) = payable(s_multisig).call{value: s_NativeCurrencyProtocolWallet}("");
         require(success, "Transfer failed");
         s_NativeCurrencyProtocolWallet = 0;
-    }
-
-    function setAttestor(address phatAttestor) public onlyOwner {
-        _grantRole(PhatRollupAnchor.ATTESTOR_ROLE, phatAttestor);
-    }
-
-    function request(string calldata reqData) public {
-        // assemble the request
-        uint id = nextRequest;
-        requests[id] = reqData;
-        _pushMessage(abi.encode(id, reqData));
-        nextRequest += 1;
     }
 
     /**
